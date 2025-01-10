@@ -1,5 +1,9 @@
 # EmergentCriticality
 
+This is an attempt to replicate the methods first presented in Torres-Sosa, C., Huang, S., & Aldana, M. (2012). "Criticality is an emergent property of genetic networks that exhibit evolvability".
+
+It provides a framework for evolving boolean networks, where selection is based on attractor conservation & innovation. 
+
 This code base is using the [Julia Language](https://julialang.org/) and
 [DrWatson](https://juliadynamics.github.io/DrWatson.jl/stable/)
 to make a reproducible scientific project named
