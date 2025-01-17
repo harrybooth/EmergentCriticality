@@ -70,12 +70,3 @@ function run_network(network::BooleanNetwork, initial_state::BitArray, steps::In
     end
     return states
 end
-
-function calculate_network_sensitivity(network::BooleanNetwork)
-    bias_bf = mean.(network.boolean_functions)
-    K_bf = length.(network.all_regulators)
-
-    AvS_bf = 2 .* K_bf .* bias_bf .* (1 .- bias_bf)
-
-    mean(AvS_bf)
-end

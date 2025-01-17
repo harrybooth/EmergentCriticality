@@ -19,3 +19,4 @@ end
 
 alpha_h_fitness(all_attractors) = mean([alpha_h(attractor) for attractor in all_attractors])
 alpha_v_fitness(all_attractors,n_nodes) = mean([alpha_v(attractor,n_nodes) for attractor in all_attractors])
+    

@@ -1,4 +1,3 @@
-# Simulate network dynamics to find attractors
 function find_all_attractors(network::BooleanNetwork)
     state_space = IterTools.product(fill(0:1, network.n_nodes)...)
     attractors = Dict{BitArray, Any}()
@@ -33,7 +32,7 @@ function find_all_unique_attractors(network::BooleanNetwork)
     unique(values(attractors))
 end
 
-function attractor_search(network::BooleanNetwork,start_attractors,bit_flip_p,trials)
+function attractor_search(network,start_attractors,bit_flip_p,trials)
 
     attractors = Dict{BitArray, Any}()
 

@@ -1,4 +1,3 @@
-
 function get_rows_where_state_on(truth_table::Vector{BitVector},row_id::Int)
 
     filter(x->Bool(digits(x, base=2,pad = Int(log2(length(truth_table))))[row_id]),0:length(truth_table)-1) .+ 1
@@ -18,6 +17,8 @@ function get_rows_where_state_off(n_truth_values::Int,row_id::Int)
 
     filter(x->!Bool(digits(x, base=2,pad = Int(log2(n_truth_values)))[row_id]),0:n_truth_values-1) .+ 1
 end
+
+# Mutation in regulatory regions (add/remove binding sites)
 
 # Mutation in regulatory regions (add/remove binding sites)
 
@@ -74,7 +75,7 @@ function mutate_coding_region(new_network::BooleanNetwork, β,k_max::Int,target_
 
         if (out_degree == 0) || rand() < 0.5
 
-            print("1")
+            # print("1")
 
             an = sample(1:new_network.n_nodes,1,replace = false)[1]
 
@@ -98,8 +99,6 @@ function mutate_coding_region(new_network::BooleanNetwork, β,k_max::Int,target_
             end
         else
 
-            print("2")
-            print(out_degree)
             # Remove an existing binding site
 
             an = sample(findall(new_network.adjacency_matrix[target_node, :]),1,replace = false)[1]
@@ -108,20 +107,11 @@ function mutate_coding_region(new_network::BooleanNetwork, β,k_max::Int,target_
 
             if !(length(existing_regulators) < 2)
                 regulator_to_remove = target_node
-
-                print("3")
-
                 state_id = findall(existing_regulators .== regulator_to_remove)[1]
-
-                print("4")
-
                 new_network.adjacency_matrix[regulator_to_remove, an] = false
-                print("5")
                 new_network.all_regulators[an] = [r for r in existing_regulators if r != regulator_to_remove]
                 # Adjust the truth table for the removed regulator
-                print("6")
                 keep_boolean_id = get_rows_where_state_off(length(new_network.boolean_functions[an]),state_id)
-                print("7")
                 new_network.boolean_functions[an] = copy(new_network.boolean_functions[an][keep_boolean_id])
             end
         end
@@ -144,20 +134,35 @@ function duplication_event(network::BooleanNetwork,β,k_max::Int)
     new_network.adjacency_matrix = vcat(new_network.adjacency_matrix,new_row)
     new_network.adjacency_matrix = hcat(new_network.adjacency_matrix,new_col)
 
-    # Copy regulatory inputs from the duplicated node
-    new_network.adjacency_matrix[:, new_network.n_nodes] .= new_network.adjacency_matrix[:, node_to_duplicate]
-
     # Copy targets of the duplicated node
     new_network.adjacency_matrix[new_network.n_nodes, :] .= new_network.adjacency_matrix[node_to_duplicate, :]
 
+    # Copy regulatory inputs from the duplicated node
+    new_network.adjacency_matrix[:, new_network.n_nodes] .= new_network.adjacency_matrix[:, node_to_duplicate]
+
     new_network.all_regulators = vcat(new_network.all_regulators, [new_network.all_regulators[node_to_duplicate]])
 
-    for i in 1:new_network.n_nodes
-        new_network.all_regulators[i] = findall(new_network.adjacency_matrix[:,i])
-    end # need to check this is right
-
-    # Copy logic of the duplicated node
     new_network.boolean_functions = vcat(new_network.boolean_functions,[new_network.boolean_functions[node_to_duplicate]])
+
+    targeted_nodes = findall(r->node_to_duplicate ∈ r,new_network.all_regulators )
+
+    for new_target in targeted_nodes
+        state_id = findall(new_network.all_regulators[new_target] .== node_to_duplicate)[1]
+
+        new_network.all_regulators[new_target] = vcat(new_network.all_regulators[new_target],[new_network.n_nodes])
+
+        n_target_length = length(new_network.boolean_functions[new_target])
+
+        bf_og = map(x->digits(x, base=2,pad = Int(log2(n_target_length))),0:n_target_length-1)
+
+        bf_new = map(x->Bool.(digits(x, base=2,pad = Int(log2(2*n_target_length)))),0:2*n_target_length-1)
+
+        bf_map = Dict(k=>v for (k,v) in zip(bf_og,new_network.boolean_functions[new_target]))
+
+        bf_reduced = map(x->reduce(vcat,[x[1:state_id-1],x[state_id] || x[end],x[state_id+1:end-1]]),bf_new)
+
+        new_network.boolean_functions[new_target] = [bf_map[x] for x in bf_reduced]
+    end
 
     if rand() < 0.5
         new_network = mutate_regulatory_region(new_network,k_max,new_network.n_nodes)
@@ -172,8 +177,11 @@ function apply_mutations(network::BooleanNetwork, μ::Float64,β,k_max::Int)
 
     new_network = deepcopy(network)
 
+    n_mut = 0
+
     for target_node in 1:new_network.n_nodes
         if rand() < μ
+            n_mut +=1
             if rand() < 0.5
                 new_network = mutate_regulatory_region(new_network,k_max,target_node)
             else
@@ -182,5 +190,5 @@ function apply_mutations(network::BooleanNetwork, μ::Float64,β,k_max::Int)
         end
     end
 
-    return new_network
+    return new_network,n_mut
 end
